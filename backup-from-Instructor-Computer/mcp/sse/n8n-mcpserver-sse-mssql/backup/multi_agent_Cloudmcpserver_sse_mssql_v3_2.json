@@ -1,0 +1,387 @@
+{
+  "name": "multi_agent_Cloudmcpserver_sse_mssql_v3_2",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1080,
+        220
+      ],
+      "id": "85c777b0-15e4-46df-af5b-5ec53a4e0c0a",
+      "name": "When chat message received",
+      "webhookId": "9a70e45d-927a-47f8-bbe0-a5e99bc792c4"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -340,
+        440
+      ],
+      "id": "3059cb0b-0014-4d80-93d1-b3cc74296c33",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2966067a-7bb6-4316-8ad9-2b7681c7e0b9",
+              "leftValue": "={{$json[\"output\"]}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ef2c8273-8b6f-4228-9ea4-b55d0c657836",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=แปลงข้อมูลนี้เป็น JSON สำหรับ MongoDB: {{ $('Facebook Scraper Agent ').first().json.output }}",
+        "options": {
+          "systemMessage": "=คุณเป็น data engineer ที่รับข้อมูลจาก AI agent แรกมาแปลงเป็น JSON สำหรับ MongoDB\n\nข้อกำหนด:\n- Return เฉพาะ valid JSON object (ไม่ใส่ ```json``` หรือคำอธิบาย)\n- ใช้ภาษาไทยในฟิลด์ที่เหมาะสม\n- โครงสร้าง JSON ต้องชัดเจนและ query ได้มีประสิทธิภาพ\n\nการจัดการข้อมูล:\n- ใช้เฉพาะข้อมูลที่ได้รับจาก agent แรก\n- ห้ามเพิ่มเติมข้อมูลหรือตีความเกินจากที่มี\n- ห้ามสร้างข้อมูลหรือข้อสรุปที่ไม่มีในต้นฉบับ\n- ถ้าข้อมูลไม่สมบูรณ์ ให้เพิ่ม \"data_incomplete\": true\n\nตัวอย่าง output:\n{\"_id\": \"analysis_001\", \"data\": {...}}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        280,
+        220
+      ],
+      "id": "3356e559-cf30-4cb6-a78a-b46c9a07d0d3",
+      "name": "Data Engineer Agent"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{$json[\"original_question\"]}}",
+        "options": {
+          "systemMessage": "=CORE IDENTITY\nYou are a professional SQL Data Analyst Agent with SELF-CORRECTION and DYNAMIC SCHEMA DISCOVERY capabilities. Your primary goals are ACCURACY, REPRODUCIBILITY, and ADAPTABILITY to any database structure.\n\nTOOL USAGE REQUIREMENT\nYou MUST use SQL tools for every analysis request. You cannot provide SQL analysis without executing actual queries against the database.\n\nMANDATORY OUTPUT FORMAT\nEvery analysis MUST include:\nANALYSIS REQUEST: [restate user question]\nATTEMPT #: [current attempt number]\nSCHEMA DISCOVERY: [tables and columns found]\nSQL QUERY EXECUTED:\n[exact query with complete syntax]\nEXECUTION STATUS: [SUCCESS/FAILED/TOOL_MALFUNCTION]\nRAW RESULTS: [actual numbers from database OR error message OR tool issue description]\nERROR ANALYSIS: [if failed - what went wrong and why]\nCORRECTIVE ACTION: [if failed - what changes will be made]\nVERIFIED FINDINGS: [interpretation of actual results only - or statement that retry is needed]\n\nDYNAMIC SCHEMA DISCOVERY WORKFLOW\nPhase 1: Database Discovery\n   Discover all available tables\n   Identify table naming patterns (fact/dim, raw tables, views)\n   No assumptions about specific table names\nPhase 2: Adaptive Structure Analysis\n   Examine key tables that match the analysis requirements\n   Discover actual column names and data types\n   Identify relationships through foreign keys or naming patterns\n   Build understanding of business domain from column names\n   NEVER assume specific column names exist\nPhase 3: Flexible Query Construction\n   Use ONLY columns that actually exist in the schema\n   Adapt business logic to discovered data types and ranges\n   Build JOINs based on discovered relationships\n   Validate data ranges based on actual data, not assumptions\n\nSELF-CORRECTION WORKFLOW\nPhase 1: Initial Execution\n   Execute your best SQL query based on discovered schema\n   Capture results OR errors\n   If successful → proceed to findings\n   If failed → activate correction protocol\n   If tool malfunction → activat",
+          "maxIterations": 30
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -440,
+        220
+      ],
+      "id": "dc34c513-5112-4249-bd35-3e293d65cad6",
+      "name": "Facebook Scraper Agent ",
+      "alwaysOutputData": false,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\n\n// ตรวจสอบว่าเป็นรอบแรกหรือไม่\nif (!staticData.current_session_data) {\n    // รอบแรก: เก็บข้อมูลทั้งหมดจาก input\n    staticData.current_session_data = {\n        original_question: $json[\"chatInput\"],\n        sessionId: $json[\"userId\"] || \"default-session\",\n        startTime: new Date().toISOString()\n    };\n}\n\n// ส่งออกข้อมูลที่คงอยู่ทุกรอบ\nreturn [{\n    sessionId: staticData.current_session_data.sessionId,\n    original_question: staticData.current_session_data.original_question\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -780,
+        220
+      ],
+      "id": "d6b584af-2fc4-4fdd-b83c-c53e44a0578f",
+      "name": "Question memorizer"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "openai/gpt-oss-120b",
+          "mode": "list",
+          "cachedResultName": "openai/gpt-oss-120b"
+        },
+        "options": {
+          "maxTokens": 8000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -520,
+        440
+      ],
+      "id": "78e3a642-7b8c-41dd-a81f-c763bb996446",
+      "name": "OpenAI Chat Model by OpenRouter",
+      "credentials": {
+        "openAiApi": {
+          "id": "DzoG8GHEP1wyS0h4",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "qwen/qwen-max",
+          "mode": "list",
+          "cachedResultName": "qwen/qwen-max"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        440
+      ],
+      "id": "91b96d0d-2512-4365-9667-78dbb17834be",
+      "name": "OpenAI Chat Model by OpenRouter-1",
+      "credentials": {
+        "openAiApi": {
+          "id": "DzoG8GHEP1wyS0h4",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "แสดงข้อมูลสรุปเกี่ยวกับฐานข้อมูล",
+        "connectionType": "sse",
+        "operation": "executeTool",
+        "toolName": "get_database_info_tool"
+      },
+      "type": "n8n-nodes-mcp.mcpClientTool",
+      "typeVersion": 1,
+      "position": [
+        -460,
+        640
+      ],
+      "id": "a271034e-84ce-4163-aa1b-ade16ed3dc08",
+      "name": "get_database_info_tool",
+      "credentials": {
+        "mcpClientSseApi": {
+          "id": "iUfbF4yz5upQq6xQ",
+          "name": "MCP Client (SSE) cloud for mssql"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Execute a read-only SQL query and return the results",
+        "connectionType": "sse",
+        "operation": "executeTool",
+        "toolName": "execute_query_tool",
+        "toolParameters": "={{ (function() {\n const paramsString = $fromAI('Tool_Parameters');\n \n // Default query เพื่อดูรายชื่อตาราง\n const defaultParams = {\n   query: \"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME\"\n };\n \n if (!paramsString) {\n   return defaultParams;\n }\n \n try {\n   // ลองแปลง JSON ก่อน\n   const params = JSON.parse(paramsString);\n   return {\n     query: params.query || params.sql || params.statement || defaultParams.query\n   };\n } catch (e) {\n   // ถ้าแปลง JSON ไม่ได้ ถือว่าเป็น SQL string โดยตรง\n   if (typeof paramsString === 'string' && paramsString.trim().length > 0) {\n     return {\n       query: paramsString.trim()\n     };\n   }\n   return defaultParams;\n }\n})() }}"
+      },
+      "type": "n8n-nodes-mcp.mcpClientTool",
+      "typeVersion": 1,
+      "position": [
+        -300,
+        640
+      ],
+      "id": "d865f809-6ccc-4b89-b8ec-286486e4012c",
+      "name": "execute_query_tool",
+      "credentials": {
+        "mcpClientSseApi": {
+          "id": "iUfbF4yz5upQq6xQ",
+          "name": "MCP Client (SSE) cloud for mssql"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Preview sample data from a specific table with configurable row limit",
+        "connectionType": "sse",
+        "operation": "executeTool",
+        "toolName": "preview_table",
+        "toolParameters": "={{ (function() {\n  const paramsString = $fromAI('Tool_Parameters');\n  \n  // Default สำหรับ preview_table\n  const defaultParams = {\n    table_name: \"allrawloanstat\",\n    limit: 10\n  };\n  \n  if (!paramsString) {\n    return defaultParams;\n  }\n  \n  try {\n    // ลองแปลง JSON ก่อน\n    const params = JSON.parse(paramsString);\n    return {\n      table_name: params.table_name || params.tableName || params.table || defaultParams.table_name,\n      limit: params.limit || params.row_count || params.rows || defaultParams.limit\n    };\n  } catch (e) {\n    // ถ้าแปลง JSON ไม่ได้ ลอง parse SQL query\n    if (typeof paramsString === 'string' && paramsString.trim().length > 0) {\n      const sql = paramsString.trim().toUpperCase();\n      \n      // หา table name จาก FROM clause\n      const fromMatch = sql.match(/FROM\\s+(\\w+)/);\n      const tableName = fromMatch ? fromMatch[1].toLowerCase() : defaultParams.table_name;\n      \n      // หา limit จาก TOP clause\n      const topMatch = sql.match(/TOP\\s+(\\d+)/);\n      const limit = topMatch ? parseInt(topMatch[1]) : defaultParams.limit;\n      \n      return {\n        table_name: tableName,\n        limit: limit\n      };\n    }\n    return defaultParams;\n  }\n})() }}"
+      },
+      "type": "n8n-nodes-mcp.mcpClientTool",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        640
+      ],
+      "id": "c1f24d43-15f6-4302-aa40-367e254d653c",
+      "name": "preview_table",
+      "credentials": {
+        "mcpClientSseApi": {
+          "id": "iUfbF4yz5upQq6xQ",
+          "name": "MCP Client (SSE) cloud for mssql"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Question memorizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Facebook Scraper Agent ",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Question memorizer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Data Engineer Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facebook Scraper Agent ": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Question memorizer": {
+      "main": [
+        [
+          {
+            "node": "Facebook Scraper Agent ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model by OpenRouter": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Facebook Scraper Agent ",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model by OpenRouter-1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Data Engineer Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_database_info_tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Facebook Scraper Agent ",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "execute_query_tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Facebook Scraper Agent ",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "preview_table": {
+      "ai_tool": [
+        [
+          {
+            "node": "Facebook Scraper Agent ",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4befc1d6-1768-4b18-b8ae-f8413473d6ab",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1656692f27ae5b1feebf36ac97aab113ce41f87d4b99f459a8f0214128866f40"
+  },
+  "id": "RGOynywNWf7N3bXl",
+  "tags": [
+    {
+      "createdAt": "2025-08-30T11:42:07.880Z",
+      "updatedAt": "2025-08-30T11:42:07.880Z",
+      "id": "4JFGzrMLWzj571P5",
+      "name": "in-progress"
+    },
+    {
+      "name": "tested@3Sep2025",
+      "id": "lQc8M4u3jRrrVWpx",
+      "createdAt": "2025-09-03T10:47:57.996Z",
+      "updatedAt": "2025-09-03T10:47:57.996Z"
+    },
+    {
+      "createdAt": "2025-08-21T02:48:15.126Z",
+      "updatedAt": "2025-08-21T02:48:15.126Z",
+      "id": "V3ge46YcXRI0kQG8",
+      "name": "stable"
+    }
+  ]
+}

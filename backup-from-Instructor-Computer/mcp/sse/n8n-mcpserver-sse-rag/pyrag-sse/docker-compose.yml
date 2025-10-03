@@ -1,0 +1,62 @@
+services:
+  # Ollama service for embeddings
+  ollama:
+    image: ollama/ollama:latest
+    container_name: pyrag-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./ollama-entrypoint.sh:/entrypoint.sh:ro
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - pyrag-network
+    restart: unless-stopped
+    entrypoint: ["/bin/bash", "/entrypoint.sh"]
+
+  # Qdrant vector database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: pyrag-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    networks:
+      - pyrag-network
+    restart: unless-stopped
+
+  # PyRAGDoc SSE server
+  pyragdoc:
+    build: .
+    container_name: pyrag-sse-server
+    ports:
+      - "8000:8000"
+    environment:
+      - QDRANT_URL=http://qdrant:6333
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-ollama}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-nomic-embed-text}
+      - OLLAMA_URL=http://ollama:11434
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - HOST=0.0.0.0
+      - PORT=8000
+      - ENVIRONMENT=production
+    env_file:
+      - .env
+    depends_on:
+      - qdrant
+      - ollama
+    networks:
+      - pyrag-network
+    restart: unless-stopped
+
+networks:
+  pyrag-network:
+    driver: bridge
+
+volumes:
+  qdrant_data:
+  ollama_data:

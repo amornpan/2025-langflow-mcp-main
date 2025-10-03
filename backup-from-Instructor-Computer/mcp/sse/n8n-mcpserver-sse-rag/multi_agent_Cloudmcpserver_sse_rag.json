@@ -1,0 +1,375 @@
+{
+  "name": "multi_agent-Cloudmcpserver_sse_rag",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1080,
+        220
+      ],
+      "id": "859ad202-2ab0-4407-890c-eb6560886f5c",
+      "name": "When chat message received",
+      "webhookId": "bf3a92e6-2915-458b-ac02-c443bedecf26"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -340,
+        440
+      ],
+      "id": "a30265c1-9b65-418e-89d0-c10584864f33",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2966067a-7bb6-4316-8ad9-2b7681c7e0b9",
+              "leftValue": "={{$json[\"output\"]}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d708ae26-2d8d-4a00-b66c-3a1679fe1d53",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=คุณเป็น data engineer ที่จะรับผลลัพธ์จาก AI agent ก่อนหน้ามาประมวลผล\nInput ที่ได้รับ: {{ $('RAG Agent').first().json.output }}\n\nงานของคุณ: แปลงข้อมูลนี้เป็น JSON object ที่เหมาะสมสำหรับ MongoDB\n\nกรุณา return เฉพาะ JSON object โดยตรง ไม่ต้องมี markdown code blocks หรือคำอธิบาย\n\nJSON structure ที่ต้องการ:\n1. มีโครงสร้างที่ชัดเจน\n2. เหมาะสำการเก็บใน MongoDB\n3. รองรับการ query ได้อย่างมีประสิทธิภาพ\n4. ใช้ภาษาไทยเป็นหลัก",
+        "options": {
+          "systemMessage": "=คุณเป็น data engineer ทำหน้าที่สร้าง valid JSON object เพื่อใช้นำเข้า MongoDB\n\nกฎสำคัญ:\n- return เฉพาะ valid JSON object เท่านั้น\n- ห้ามใส่คำอธิบาย markdown หรือข้อความใดๆ\n- ตรวจสอบ JSON syntax ให้ถูกต้อง (comma, quotes, brackets)\n- ห้าม wrap ด้วย ```json``` หรือ array\n\nตัวอย่าง output ที่ถูกต้อง:\n{\"_id\": \"analysis_001\", \"data\": {...}}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        280,
+        220
+      ],
+      "id": "d1a90147-ad85-4d86-8070-1f7fc34e82cd",
+      "name": "Data Engineer Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\n\n// ตรวจสอบว่าเป็นรอบแรกหรือไม่\nif (!staticData.current_session_data) {\n    // รอบแรก: เก็บข้อมูลทั้งหมดจาก input\n    staticData.current_session_data = {\n        original_question: $json[\"chatInput\"],\n        sessionId: $json[\"userId\"] || \"default-session\",\n        startTime: new Date().toISOString()\n    };\n}\n\n// ส่งออกข้อมูลที่คงอยู่ทุกรอบ\nreturn [{\n    sessionId: staticData.current_session_data.sessionId,\n    original_question: staticData.current_session_data.original_question\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -780,
+        220
+      ],
+      "id": "ff270044-17c4-4f51-88b8-526407f0ef0b",
+      "name": "Question memorizer"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "openai/gpt-oss-120b",
+          "mode": "list",
+          "cachedResultName": "openai/gpt-oss-120b"
+        },
+        "options": {
+          "maxTokens": 8000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -520,
+        440
+      ],
+      "id": "72452aa6-2d56-4cc6-b2d0-0528252102d6",
+      "name": "OpenAI Chat Model by OpenRouter",
+      "credentials": {
+        "openAiApi": {
+          "id": "PcWnynu1MNa27G22",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "qwen/qwen-max",
+          "mode": "list",
+          "cachedResultName": "qwen/qwen-max"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        380,
+        440
+      ],
+      "id": "dbd9730f-2126-47f0-ac50-c08585cd6363",
+      "name": "OpenAI Chat Model by OpenRouter-1",
+      "credentials": {
+        "openAiApi": {
+          "id": "PcWnynu1MNa27G22",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "List all documentation sources currently stored",
+        "connectionType": "sse",
+        "operation": "executeTool",
+        "toolName": "list_sources"
+      },
+      "type": "n8n-nodes-mcp.mcpClientTool",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        440
+      ],
+      "id": "2e67a747-2624-428a-9790-8f1852a9bc4f",
+      "name": "list_sources",
+      "credentials": {
+        "mcpClientSseApi": {
+          "id": "ISsQLX1uyBQeujh2",
+          "name": "MCP Client (SSE) for RAG"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Add all supported files from a directory to the RAG database",
+        "connectionType": "sse",
+        "operation": "executeTool",
+        "toolName": "add_directory",
+        "toolParameters": "={{ (function() {\n  const paramsString = $fromAI('Tool_Parameters');\n  \n  // Default path\n  const defaultParams = {\n    path: \"/home/user/documents\"\n  };\n  \n  if (!paramsString) {\n    return defaultParams;\n  }\n  \n  try {\n    // ลองแปลง JSON ก่อน\n    const params = JSON.parse(paramsString);\n    return {\n      path: params.path || defaultParams.path\n    };\n  } catch (e) {\n    // ถ้าแปลง JSON ไม่ได้ ถือว่าเป็น path string โดยตรง\n    if (typeof paramsString === 'string' && paramsString.trim().length > 0) {\n      return {\n        path: paramsString.trim()\n      };\n    }\n    return defaultParams;\n  }\n})() }}"
+      },
+      "type": "n8n-nodes-mcp.mcpClientTool",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        440
+      ],
+      "id": "85c4ee62-99bb-4f19-adb6-73f69f20abd7",
+      "name": "add_directory",
+      "credentials": {
+        "mcpClientSseApi": {
+          "id": "ISsQLX1uyBQeujh2",
+          "name": "MCP Client (SSE) for RAG"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Search through stored documentation",
+        "connectionType": "sse",
+        "operation": "executeTool",
+        "toolName": "search_documentation",
+        "toolParameters": "={{ (function() {\n  const paramsString = $fromAI('Tool_Parameters');\n  \n  // Default parameters\n  const defaultParams = {\n    query: \"search term\",\n    limit: 10\n  };\n  \n  if (!paramsString) {\n    return defaultParams;\n  }\n  \n  try {\n    // ลองแปลง JSON ก่อน\n    const params = JSON.parse(paramsString);\n    return {\n      query: params.query || params.search || params.keyword || defaultParams.query,\n      limit: params.limit || params.max || params.count || defaultParams.limit\n    };\n  } catch (e) {\n    // ถ้าแปลง JSON ไม่ได้ ถือว่าเป็น search string โดยตรง\n    if (typeof paramsString === 'string' && paramsString.trim().length > 0) {\n      return {\n        query: paramsString.trim(),\n        limit: defaultParams.limit\n      };\n    }\n    return defaultParams;\n  }\n})() }}"
+      },
+      "type": "n8n-nodes-mcp.mcpClientTool",
+      "typeVersion": 1,
+      "position": [
+        120,
+        440
+      ],
+      "id": "bf4fd4fb-4037-43aa-be5a-1c118161dce9",
+      "name": "search_documentation",
+      "credentials": {
+        "mcpClientSseApi": {
+          "id": "ISsQLX1uyBQeujh2",
+          "name": "MCP Client (SSE) for RAG"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{$json[\"original_question\"]}}",
+        "options": {
+          "systemMessage": "=CORE IDENTITY\nYou are a professional Documentation Management Agent with RAG (Retrieval-Augmented Generation) capabilities. Your primary goals are EFFICIENT DOCUMENTATION MANAGEMENT, ACCURATE RETRIEVAL, and COMPREHENSIVE KNOWLEDGE BASE BUILDING.\n\nTOOL USAGE REQUIREMENT\nYou MUST use documentation tools for every documentation-related request. You cannot provide documentation analysis without using the actual tools.\n\nAVAILABLE TOOLS\n1. add_documentation - Add documentation from a URL to the RAG database\n2. search_documentation - Search through stored documentation\n3. list_sources - List all documentation sources currently stored\n4. add_directory - Add all supported files from a directory to the RAG database\n\nMANDATORY OUTPUT FORMAT\nEvery operation MUST include:\nREQUEST: [restate user request]\nTOOL SELECTED: [which tool and why]\nPARAMETERS USED:\n[exact parameters in JSON format]\nEXECUTION STATUS: [SUCCESS/FAILED/ERROR]\nRAW RESULTS: [actual response from tool]\nACTION SUMMARY: [what was accomplished or what went wrong]\nNEXT STEPS: [recommendations for follow-up actions if needed]\n\nWORKFLOW PATTERNS\n\nPattern 1: Adding New Documentation\n- Use add_documentation for URLs\n- Use add_directory for local folders\n- Always verify with list_sources after adding\n\nPattern 2: Searching Documentation\n- First use list_sources to understand available sources\n- Then use search_documentation with relevant queries\n- Refine search if initial results insufficient\n\nPattern 3: Knowledge Base Maintenance\n- Regularly list_sources to audit content\n- Search before adding to avoid duplicates\n- Build comprehensive coverage systematically\n\nERROR HANDLING\n- If add fails: Check URL/path validity\n- If search returns empty: Try broader terms\n- If tool errors: Report exact error message\n- Always provide alternative approaches",
+          "maxIterations": 30
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -440,
+        220
+      ],
+      "id": "5ef6f293-d28e-4524-a741-236aa5bef488",
+      "name": "RAG Agent",
+      "alwaysOutputData": false,
+      "retryOnFail": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Question memorizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "RAG Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Question memorizer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Data Engineer Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Question memorizer": {
+      "main": [
+        [
+          {
+            "node": "RAG Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model by OpenRouter": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "RAG Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model by OpenRouter-1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Data Engineer Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "list_sources": {
+      "ai_tool": [
+        [
+          {
+            "node": "RAG Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "add_directory": {
+      "ai_tool": [
+        [
+          {
+            "node": "RAG Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search_documentation": {
+      "ai_tool": [
+        [
+          {
+            "node": "RAG Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG Agent": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c9673bc8-53bf-43cd-905b-66351c41ee0c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0a8766c5a192ec1c92124148bf1a18f26ac83d30823524bb8618e3d27bd6fad3"
+  },
+  "id": "hyzMkUCp2qK0rfoV",
+  "tags": [
+    {
+      "createdAt": "2025-09-04T04:31:20.574Z",
+      "updatedAt": "2025-09-04T04:31:20.574Z",
+      "id": "C7wWNpLYb8cT5j44",
+      "name": "in-progress"
+    }
+  ]
+}

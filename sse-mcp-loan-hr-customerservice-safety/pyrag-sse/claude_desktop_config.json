@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "pyragdoc-sse": {
+      "url": "http://localhost:9000/sse",
+      "transport": "sse"
+    }
+  }
+}

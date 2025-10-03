@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  mcp-server:
+    build: .
+    container_name: mssql-mcp-sse
+    ports:
+      - "9000:8000"
+    environment:
+      - DB_SERVER=${DB_SERVER:-35.185.131.47}
+      - DB_NAME=${DB_NAME:-Electric}
+      - DB_USER=${DB_USER:-SA}
+      - DB_PASSWORD=${DB_PASSWORD:-Passw0rd123456}
+      - HOST=0.0.0.0
+      - PORT=8000
+      - ENVIRONMENT=production
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  mcp-network:
+    driver: bridge
