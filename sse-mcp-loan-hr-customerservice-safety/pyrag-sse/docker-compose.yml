@@ -4,7 +4,7 @@ services:
     image: ollama/ollama:latest
     container_name: pyrag-ollama
     ports:
-      - "11434:11434"
+      - "11435:11434"
     volumes:
       - ollama_data:/root/.ollama
       - ./ollama-entrypoint.sh:/entrypoint.sh:ro
@@ -20,7 +20,7 @@ services:
     image: qdrant/qdrant:latest
     container_name: pyrag-qdrant
     ports:
-      - "6333:6333"
+      - "6335:6333"
     volumes:
       - qdrant_data:/qdrant/storage
     environment:
